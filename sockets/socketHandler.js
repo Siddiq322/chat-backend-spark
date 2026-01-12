@@ -297,6 +297,52 @@ const initializeSocket = (io) => {
     });
 
     /**
+     * DELETE MESSAGE EVENT
+     * Client sends: { messageId }
+     */
+    socket.on('delete_message', async (data) => {
+      try {
+        const { messageId } = data;
+        const message = await Message.findById(messageId);
+
+        if (!message) {
+          socket.emit('message_error', { error: 'Message not found' });
+          return;
+        }
+
+        // Only sender can delete their message
+        if (message.sender.toString() !== userId) {
+          socket.emit('message_error', { error: 'Not authorized to delete this message' });
+          return;
+        }
+
+        // Soft delete
+        message.isDeleted = true;
+        message.deletedAt = new Date();
+        message.content = 'This message was deleted';
+        await message.save();
+
+        // Notify receiver
+        const receiverSocketId = connectedUsers.get(message.receiver.toString());
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit('message_deleted', {
+            messageId,
+            conversationId: message.conversationId,
+          });
+        }
+
+        // Confirm to sender
+        socket.emit('message_deleted', {
+          messageId,
+          conversationId: message.conversationId,
+        });
+      } catch (error) {
+        console.error('Delete message error:', error);
+        socket.emit('message_error', { error: 'Failed to delete message' });
+      }
+    });
+
+    /**
      * REQUEST SENT EVENT (for real-time chat request notifications)
      * Client sends: { receiverId, request }
      */
