@@ -14,7 +14,7 @@ services:
       - key: JWT_EXPIRE
         value: 7d
       - key: CLIENT_URL
-        value: https://real-chat-flow.netlify.app
+        value: https://chat-frontend-spark-lifj.vercel.app,https://real-chat-flow.netlify.app
       - key: NODE_ENV
         value: production
       - key: PORT
