@@ -16,6 +16,13 @@ const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
+    console.log('📝 Registration attempt:', { username, email });
+
+    // Validate required fields
+    if (!username || !email || !password) {
+      return sendError(res, 400, 'Please provide username, email, and password');
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({
       $or: [{ email }, { username }],
@@ -23,9 +30,11 @@ const register = async (req, res) => {
 
     if (existingUser) {
       if (existingUser.email === email) {
+        console.log('❌ Email already exists:', email);
         return sendError(res, 400, 'Email already registered');
       }
       if (existingUser.username === username) {
+        console.log('❌ Username already taken:', username);
         return sendError(res, 400, 'Username already taken');
       }
     }
@@ -37,6 +46,8 @@ const register = async (req, res) => {
       password,
     });
 
+    console.log('✅ User created successfully:', user._id);
+
     // Generate JWT token
     const token = generateToken(user._id);
 
@@ -46,7 +57,14 @@ const register = async (req, res) => {
       token,
     });
   } catch (error) {
-    console.error('Register error:', error);
+    console.error('❌ Register error:', error);
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return sendError(res, 400, messages.join(', '));
+    }
+    
     sendError(res, 500, 'Error registering user');
   }
 };
